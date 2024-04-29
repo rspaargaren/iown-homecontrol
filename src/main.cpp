@@ -261,20 +261,20 @@ void setup() {
     Cmd::addHandler((char *)"custom", (char *)"test unknown commands", [](Tokens* cmd)-> void {/*scanMode = true;*/       cozyDevice2W->cmd(IOHC::DeviceButton::custom, cmd /*cmd->at(1).c_str()*/);    });
     Cmd::addHandler((char *)"custom60", (char *)"test 0x60 commands", [](Tokens* cmd)-> void {/*scanMode = true;*/ cozyDevice2W->cmd(IOHC::DeviceButton::custom60, cmd /*cmd->at(1).c_str()*/);    });
     // 1W
-    Cmd::addHandler((char *)"pair", (char *)"1W put device in pair mode", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Pair);    });
-    Cmd::addHandler((char *)"add", (char *)"1W add controller to device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Add);    });
-    Cmd::addHandler((char *)"remove", (char *)"1W remove controller from device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Remove);    });
-    Cmd::addHandler((char *)"open", (char *)"1W open device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Open);    });
-    Cmd::addHandler((char *)"close", (char *)"1W close device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Close);    });
-    Cmd::addHandler((char *)"stop", (char *)"1W stop device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Stop);    });
-    Cmd::addHandler((char *)"vent", (char *)"1W vent device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Vent);    });
-    Cmd::addHandler((char *)"force", (char *)"1W force device open", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::ForceOpen);    });
-    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey);    });
+    Cmd::addHandler((char *)"pair", (char *)"1W put device in pair mode", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Pair, cmd);    });
+    Cmd::addHandler((char *)"add", (char *)"1W add controller to device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Add, cmd);    });
+    Cmd::addHandler((char *)"remove", (char *)"1W remove controller from device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Remove, cmd);    });
+    Cmd::addHandler((char *)"open", (char *)"1W open device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Open, cmd);    });
+    Cmd::addHandler((char *)"close", (char *)"1W close device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Close, cmd);    });
+    Cmd::addHandler((char *)"stop", (char *)"1W stop device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Stop, cmd);    });
+    Cmd::addHandler((char *)"vent", (char *)"1W vent device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Vent, cmd);    });
+    Cmd::addHandler((char *)"force", (char *)"1W force device open", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::ForceOpen, cmd);    });
+    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey, nullptr);    });
 
-        Cmd::addHandler((char *)"mode1", (char *)"1W Mode1", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode1);    });
-        Cmd::addHandler((char *)"mode2", (char *)"1W Mode2", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode2);    });
-        Cmd::addHandler((char *)"mode3", (char *)"1W Mode3", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode3);    });
-        Cmd::addHandler((char *)"mode4", (char *)"1W Mode4", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode4);    });
+        Cmd::addHandler((char *)"mode1", (char *)"1W Mode1", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode1, cmd);    });
+        Cmd::addHandler((char *)"mode2", (char *)"1W Mode2", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode2, cmd);    });
+        Cmd::addHandler((char *)"mode3", (char *)"1W Mode3", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode3, cmd);    });
+        Cmd::addHandler((char *)"mode4", (char *)"1W Mode4", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode4, cmd);    });
     // Other 2W
     Cmd::addHandler((char *)"discovery", (char *)"Send discovery on air", [](Tokens* cmd)-> void {    otherDevice2W->cmd(IOHC::Other2WButton::discovery, nullptr);    });
     Cmd::addHandler((char *)"getName", (char *)"Name Of A Device", [](Tokens* cmd)-> void {    otherDevice2W->cmd(IOHC::Other2WButton::getName, cmd);    });
@@ -323,11 +323,11 @@ void setup() {
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
     // iohc->decode(verbosity);
 
-    DynamicJsonDocument doc(1280);
+    /*Dynamic*/JsonDocument doc; //(1280);
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
         case IOHC::iohcDevice::RECEIVED_DISCOVER_0x28: {
-            printf("Pairing Asked\n");
+            printf("2W Pairing Asked\n");
             if (!pairMode) break;
 
             packets2send.clear();
@@ -366,7 +366,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
         break;
         }
         case IOHC::iohcDevice::RECEIVED_DISCOVER_ACTUATOR_0x2C: {
-            printf("Actuator Ack Asked\n");
+            printf("2W Actuator Ack Asked\n");
             if (!pairMode) break;
             
             packets2send.clear();
@@ -401,7 +401,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
         break;
         }
         case IOHC::iohcDevice::SEND_LAUNCH_KEY_TRANSFERT_0x38: {
-            printf("Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
+            printf("2W Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
             if (!pairMode) break;
             
             packets2send.clear();
@@ -607,7 +607,7 @@ for (char byte : nameReceived) {
             break;
         }
          case 0x29: {
-            printf("A Device want to be paired\n");
+            printf("2W Device want to be paired\n");
             if (!pairMode) break;
 
             std::vector<uint8_t> deviceAsked;
@@ -685,12 +685,13 @@ for (char byte : nameReceived) {
             for (uint8_t idx = 0; idx < 6; idx++)
                 printf("%2.2X", hmac[idx]);
             printf("\n");
-        break;
+            break;
         }
+        case 0X3D:
         case 0x48:
         case 0x49:
         case 0x4A:
-        case 0X3D:
+        case 0x50:
         case 0X05: break;
         default:
             printf("Received Unknown command %02X ", iohc->payload.packet.header.cmd);
@@ -705,7 +706,7 @@ for (char byte : nameReceived) {
 /*TODO Merge with decode here (radio.cpp line 168)*/
 bool publishMsg(IOHC::iohcPacket* iohc) {
     //                if(iohc->payload.packet.header.cmd == 0x20 || iohc->payload.packet.header.cmd == 0x00) {
-    DynamicJsonDocument doc(512);
+    /*Dynamic*/JsonDocument doc; //(1024);
     doc["type"] = "Cozy";
     doc["from"] = bytesToHexString(iohc->payload.packet.header.target, 3);
     doc["to"] = bytesToHexString(iohc->payload.packet.header.source, 3);

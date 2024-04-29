@@ -1,6 +1,7 @@
 #include <iohcRemote1W.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+
 #include <iohcCryptoHelpers.h>
 
 
@@ -49,7 +50,62 @@ namespace IOHC {
 
     std::vector<uint8_t> frame;
 
-    void iohcRemote1W::cmd(RemoteButton cmd) {
+    void iohcRemote1W::cmd(RemoteButton cmd, Tokens* data) {
+        std::string description = data->at(1).c_str();
+
+        auto it = std::find_if( remotes.begin(), remotes.end(),  [&] ( const remote &r  ) {
+                 return description == r.description;
+              } );
+
+        remote& r = *it;
+        bool found = true;
+        if (it == remotes.end()) {
+            printf("ERROR %s NOT IN JSON", description.c_str());
+            found = false;
+            // return;
+        }
+/*
+        int value = 0;
+        try {
+            value = std::strtol(data->at(1).c_str(), nullptr, 16);
+        } catch (const std::invalid_argument& e) {
+            printf("ERROR: Invalid 1W address format (std::invalid_argument): %s\n", data->at(1).c_str());
+            // return;
+        } catch (const std::out_of_range& e) {
+            printf("ERROR: USE A VALID 1W ADDRESS");
+            //return;
+        } catch (const std::exception& e) {
+            printf("ERROR: Unexpected exception during conversion (%s).", e.what());
+            // return;
+        }
+*/
+/*
+        auto it = std::find_if(remotes.begin(), remotes.end(), [&](const remote& r) {
+            // Create a temporary object (assuming you have a way to construct it)
+            iohcRemote1W tempRemote;
+            return tempRemote.compareTarget(r);
+        });
+
+        if (it == remotes.end()) {
+            printf("ERROR %p NOT IN JSON", target);
+            return; }
+*/
+/*
+        // remote address
+        address remoteAddress = {static_cast<uint8_t>(value >> 16),
+                                 static_cast<uint8_t>(value >> 8),
+                                 static_cast<uint8_t>(value)};
+
+        const remote* foundRemote = nullptr;
+        for (const auto& oneRemote : remotes) {
+            if (memcmp(oneRemote.node, remoteAddress, sizeof(address)) == 0) {
+                foundRemote = &oneRemote;
+                break;
+            }
+        }
+        if (foundRemote != nullptr)
+            printf( "Remote found : %s\n", foundRemote->description.c_str());
+*/
         // Emulates remote button press
         switch (cmd) {
             case RemoteButton::Pair: {
@@ -57,27 +113,28 @@ namespace IOHC {
                 packets2send.clear();
 
                 IOHC::relStamp = esp_timer_get_time();
-                for (auto&r: remotes) {
-                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+//                for (auto&r: remotes) {
+                if (!found) break;
+
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]); // typn);
+                    IOHC::iohcRemote1W::init(packet, r.type[0]);
                     // Packet length
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
 
                     // Source (me)
                     for (size_t i = 0; i < sizeof(address); i++)
-                        packet->payload.packet.header.source[i] = r.node[i]; // _node[i];
+                        packet->payload.packet.header.source[i] = r.node[i];
 
                     //Command
                     packet->payload.packet.header.cmd = 0x2e;
                     // Data
                     packet->payload.packet.msg.p0x2e.data = 0x00;
                     // Sequence
-                    packet->payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8; // _sequence >> 8;
-                    packet->payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff; //_sequence & 0x00ff;
-                    r.sequence += 1; // _sequence += 1;
+                    packet->payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8;
+                    packet->payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff;
+                    r.sequence += 1;
                     // hmac
                     frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 2);
                     uint8_t hmac[16];
@@ -91,7 +148,7 @@ namespace IOHC {
                     packets2send.push_back(packet);
                     // if (typn) packet->payload.packet.header.CtrlByte2.asStruct.LPM = 0; //TODO only first is LPM
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                }
+//                }
                 _radioInstance->send(packets2send);
                 break;
             }
@@ -101,12 +158,13 @@ namespace IOHC {
                 packets2send.clear();
 
                 IOHC::relStamp = esp_timer_get_time();
-                for (auto&r: remotes) {
-                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+//                for (auto&r: remotes) {
+                if (!found) break;
 
-                    auto* packet = new iohcPacket; // packets2send[typn];
-                    IOHC::iohcRemote1W::init(packet, r.type[0]); // typn);
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+
+                    auto* packet = new iohcPacket;
+                    IOHC::iohcRemote1W::init(packet, r.type[0]);
                     // Packet length
                     //                    packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
@@ -134,7 +192,7 @@ namespace IOHC {
 
                     packets2send.push_back(packet);
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                }
+//                }
                 _radioInstance->send(packets2send);
                 //printf("\n");
                 break;
@@ -145,12 +203,13 @@ namespace IOHC {
                 packets2send.clear();
 
                 IOHC::relStamp = esp_timer_get_time();
-                for (auto&r: remotes) {
-                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
+//                for (auto&r: remotes) {
+                if (!found) break;
+
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]); // typn);
+                    IOHC::iohcRemote1W::init(packet, r.type[0]);
                     // Packet length
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x30);
 
@@ -179,10 +238,8 @@ namespace IOHC {
 
                     packets2send.push_back(packet);
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                }
+//                }
                 _radioInstance->send(packets2send);
-                //                packets2send[0]->decode(); //  KLI 1W
-                //printf("\n");
                 break;
             }
             case RemoteButton::testKey: {
@@ -207,33 +264,33 @@ namespace IOHC {
                 uint8_t bLen = hexStringToBytes(tmp, btmp);
                 std::vector buffer(btmp, btmp + bLen);
                 uint16_t crc = iohcCrypto::radioPacketComputeCrc(btmp, bLen);
-                Serial.printf("--> %s (%d) crc %2.2x%2.2x <--\t\t", tmp.c_str(), bLen, crc & 0x00ff, crc >> 8);
+                printf("--> %s (%d) crc %2.2x%2.2x <--\t\t", tmp.c_str(), bLen, crc & 0x00ff, crc >> 8);
                 crc = iohcCrypto::radioPacketComputeCrc(buffer);
-                Serial.printf("--> alt crc %2.2x%2.2x <--\n\n", crc & 0x00ff, crc >> 8);
+                printf("--> alt crc %2.2x%2.2x <--\n\n", crc & 0x00ff, crc >> 8);
 
 
-                Serial.printf("Node address: ");
+                printf("Node address: ");
                 for (unsigned char idx: bnode)
-                    Serial.printf("%2.2x", idx);
-                Serial.printf("\n");
-                Serial.printf("Dest address: ");
+                    printf("%2.2x", idx);
+                printf("\n");
+                printf("Dest address: ");
                 for (unsigned char idx: bdest)
-                    Serial.printf("%2.2x", idx);
-                Serial.printf("\n");
-                Serial.printf("Controller key in clear:  ");
+                    printf("%2.2x", idx);
+                printf("\n");
+                printf("Controller key in clear:  ");
                 for (unsigned char idx: bcontroller)
-                    Serial.printf("%2.2x", idx);
-                Serial.printf("\n");
+                    printf("%2.2x", idx);
+                printf("\n");
 
                 std::vector node(bnode, bnode + 3);
                 std::vector controller(bcontroller, bcontroller + 16);
                 std::vector<uint8_t> ret;
 
                 iohcCrypto::encrypt_1W_key(bnode, bcontroller);
-                Serial.printf("Controller key encrypted: ");
+                printf("Controller key encrypted: ");
                 for (unsigned char idx: bcontroller)
-                    Serial.printf("%2.2x", idx);
-                Serial.printf("\n");
+                    printf("%2.2x", idx);
+                printf("\n");
 
 
                 uint16_t test = (bseq[0] << 8) + bseq[1];
@@ -259,18 +316,18 @@ namespace IOHC {
                     hexStringToBytes(controller_key, bcontroller);
                     iohcCrypto::create_1W_hmac(output, bseq, bcontroller, frame1);
 
-                    Serial.printf("Open: f620");
+                    printf("Open: f620");
                     for (unsigned char idx: bdest)
-                        Serial.printf("%2.2x", idx);
+                        printf("%2.2x", idx);
                     for (unsigned char idx: bnode)
-                        Serial.printf("%2.2x", idx);
+                        printf("%2.2x", idx);
                     for (unsigned char idx: bframe1) // <-- adjust packet length
-                        Serial.printf("%2.2x", idx);
+                        printf("%2.2x", idx);
                     for (unsigned char idx: bseq)
-                        Serial.printf("%2.2x", idx);
+                        printf("%2.2x", idx);
                     for (uint8_t idx = 0; idx < 6; idx++)
-                        Serial.printf("%2.2x", output[idx]);
-                    Serial.printf("\t\t");
+                        printf("%2.2x", output[idx]);
+                    printf("\t\t");
 
                     uint8_t bframe2[7] = {0x00, 0x01, 0x61, 0xC8, 0x00, 0x02, 0x00};
                     // <-- Set packet here, excluding sequence number, then adjust length
@@ -278,18 +335,18 @@ namespace IOHC {
                     hexStringToBytes(controller_key, bcontroller);
                     iohcCrypto::create_1W_hmac(output, bseq, bcontroller, frame2);
 
-                    Serial.printf("Close: f620");
+                    printf("Close: f620");
                     for (unsigned char idx: bdest)
-                        Serial.printf("%2.2x", idx);
+                        printf("%2.2x", idx);
                     for (unsigned char idx: bnode)
-                        Serial.printf("%2.2x", idx);
+                        printf("%2.2x", idx);
                     for (unsigned char idx: bframe2) // <-- adjust packet length
-                        Serial.printf("%2.2x", idx);
+                        printf("%2.2x", idx);
                     for (unsigned char idx: bseq)
-                        Serial.printf("%2.2x", idx);
+                        printf("%2.2x", idx);
                     for (uint8_t idx = 0; idx < 6; idx++)
                         Serial.printf("%2.2x", output[idx]);
-                    Serial.printf("\n");
+                    printf("\n");
                 }
                 break;
             }
@@ -298,12 +355,13 @@ namespace IOHC {
 
                 IOHC::relStamp = esp_timer_get_time();
                 // 0x00: 0x1600 + target broadcast + source + 0x00 + Originator + ACEI + Main Param + FP1 + FP2 + sequence + hmac
-                for (auto&r: remotes) {
-                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
+//                for (auto&r: remotes) {
+                if (!found) break;
+
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]); // typn);
+                    IOHC::iohcRemote1W::init(packet, r.type[0]);
                     // Packet length
                     // packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     // Source (me)
@@ -487,7 +545,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
                     }
                     else {
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00_14) ;
-                        //     // Sequence
+                        // Sequence
                         packet->payload.packet.msg.p0x00_14.sequence[0] = r.sequence >> 8;
                         packet->payload.packet.msg.p0x00_14.sequence[1] = r.sequence & 0x00ff;
                         uint8_t toAdd =  6 + 1; //OK
@@ -521,7 +579,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
                 }
                 _radioInstance->send(packets2send);
                 break;
-            }
+//            }
         }
         this->save(); // Save sequence number
     }
@@ -537,7 +595,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         }
 
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "r");
-        DynamicJsonDocument doc(8192);
+        /*Dynamic*/JsonDocument doc; //(8192);
 
         DeserializationError error = deserializeJson(doc, f); // buf.get());
 
@@ -563,18 +621,18 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
             hexStringToBytes(jobj["sequence"].as<const char *>(), btmp);
             // _sequence = (btmp[0] << 8) + btmp[1];
             r.sequence = (btmp[0] << 8) + btmp[1];
-                        JsonArray jarr = jobj["type"];
-                       // Réservez de l'espace dans le vecteur pour éviter les allocations inutiles
+            JsonArray jarr = jobj["type"];
+            // Réservez de l'espace dans le vecteur pour éviter les allocations inutiles
 
-                       //_type.reserve(jarr.size());
-           r.type.reserve(jarr.size());
+            //_type.reserve(jarr.size());
+            r.type.reserve(jarr.size());
 
-                       // Iterate through the JSON  type array
-                       for (auto && i : jarr) {
-                           // _type.insert(_type.begin() + i, jarr[i].as<uint16_t>());
-                           //_type.push_back(i.as<uint16_t>());
-           r.type.push_back(i.as<uint8_t>());
-                       }
+            // Iterate through the JSON  type array
+            for (auto && i : jarr) {
+            // _type.insert(_type.begin() + i, jarr[i].as<uint16_t>());
+            //_type.push_back(i.as<uint16_t>());
+                r.type.push_back(i.as<uint8_t>());
+            }
                        
             // _type = jobj["type"].as<u_int16_t>();
 //            r.type = jobj["type"].as<u_int16_t>();
@@ -585,18 +643,23 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
             remotes.push_back(r);
         }
 
-        Serial.printf("Loading 1W remote  %d remotes\n", remotes.size()); // _type.size());
+        Serial.printf("Loaded %d x 1W remotes\n", remotes.size()); // _type.size());
         // _sequence = 0x1402;    // DEBUG
         return true;
     }
-
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+ */
     bool iohcRemote1W::save() {
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "w+");
-        DynamicJsonDocument doc(8192);
+        /*Dynamic*/JsonDocument doc; //(8192);
         for (const auto&r: remotes) {
-            // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
             // jobj["key"] = bytesToHexString(_key, sizeof(_key));
-            JsonObject jobj = doc.createNestedObject(bytesToHexString(r.node, sizeof(r.node)));
+//            JsonObject jobj = doc.createNestedObject(bytesToHexString(r.node, sizeof(r.node)));
+            auto jobj = doc[bytesToHexString(r.node, sizeof(r.node))].to<JsonObject>();
             jobj["key"] = bytesToHexString(r.key, sizeof(r.key));
 
             uint8_t btmp[2];
@@ -607,9 +670,8 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
 
             jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
             
-            JsonArray jarr = jobj.createNestedArray("type");
-            // copyArray(r.type.data(), jarr);
-            // for (uint16_t i : _type)
+            // JsonArray jarr = jobj.createNestedArray("type");
+            auto jarr = jobj["type"].to<JsonArray>();
             for (uint8_t i : r.type) {
                 // if (i)
                 bool added = jarr.add(i);
